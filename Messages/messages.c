@@ -11,24 +11,22 @@
 /* Declarations of global variables visible only in this file 		*/
 
 //Liste von Knoten
-typedef struct node
+typedef struct node				//Knoten sind Listen welche die Prozess ID´s und die Handler speichern.
 {
-	pid_t pid;
-	msgHandler_t handler;
-	struct node* next;
-} node;
+	pid_t pid;					//ProzessID des aktuell betrachteten Knoten
+	msgHandler_t handler;		//Handler des aktuell betrachteten Knoten
+	struct node* next;			//Zeiger auf den nächsten Knoten in der Liste
+} node;							
 
 //Liste von Listen
-typedef struct list
+typedef struct list				//In list werden die Listen mit den Prozess ID´s gespeichert mit
 {
-	msgType_t msgType_l;
-	struct node* firstNode;
-	struct list* listnext;
+	msgType_t msgType_l;		//Nachrichtentyp der aktuell betrachteten Liste von Knoten
+	struct node* firstNode;		//Zeiger auf den ersten Knoten in der Liste
+	struct list* listnext;		//Zeiger auf die Nächste Liste von Knoten
 } list;
 
-list* liste;
-list* root;
-node* curr;
+list* root;						//Zeiger auf die erste Liste von Knoten
 
 /* ----------------------------------------------------------------	*/
 /* Declarations of functions visible only in this file 				*/
@@ -54,51 +52,57 @@ msgReturn_t msg_init(void)
 msgReturn_t msg_register(pid_t pid, msgType_t msgType, msgHandler_t myHandler)
 {
 
-	node* newNode = malloc(sizeof(struct node));
-	newNode->pid = pid;
-	newNode->handler = myHandler;
-	newNode->next = NULL;
+	node* newNode = malloc(sizeof(struct node));	//Speicher reservieren für den neuen Knoten
+	newNode->pid = pid;								//PID wir in Den Knoten eingetragen
+	newNode->handler = myHandler;					//Handler wird in den Knoten eingetragen
+	newNode->next = NULL;							//Referenz auf den NULL als Marker für das ende der Liste
 
-	if (root == NULL)
+	if (root == NULL)								//Falls noch keine Liste von Listen existiert
 	{
-		list* newList = malloc(sizeof(struct list));
-		newList->msgType_l = msgType;
-		newList->firstNode = newNode;
-		newList->listnext = NULL;
-		root = newList;
+		list* newList = malloc(sizeof(struct list));//Speicher reservieren für eine neue Liste von Knoten
+		newList->msgType_l = msgType;				//msgType wird als Type der Liste von Knoten definiert
+		newList->firstNode = newNode;				//Neuer Knoten wird als erster Knoten in die Liste eingefügt
+		newList->listnext = NULL;					//Referenz auf den NULL als Marker für das Ende der Liste
+		root = newList;								//Die neue Liste wird als Startwert gesetzt
+		return 1;
 	}
-	liste = root;
+	list* liste = root;								//Erstellen eines temporären Laufzeigers für die Listen von Knoten
 
-	while (liste != NULL)
+	while (liste != NULL)							//Schleife die bis zum Ende der Liste von Listen läuft 
 	{
-		if (msgType == liste->msgType_l)
+		if (msgType == liste->msgType_l)			//Check ob gesuchter msgType gleich dem der Liste ist
 		{
+		
 
-			curr = liste->firstNode;
-			while (curr->next != NULL)
+			node* curr = liste->firstNode;			//Erstellen eines Laufzeigers für die Knoten in einer Liste
+			while (curr->next != NULL)				//Schleife um ans Ende der Liste zu kommen
 			{
-				curr = curr->next;
+				if (curr != newNode)				//Check ob Prozess bereits in der Liste eingetragen ist
+				{
+					curr = curr->next;				//Laufzeiger wird einen weiter verschoben
+				}
+				else								//Falls der Knoten bereits in der Liste vorhanden ist
+				{
+					break;							//Abbruch wenn der Prozess bereits in der Liste vorhanden ist
+				}
 			}
-			if (curr != newNode) 
-			{
-				curr->next = newNode;
-			}
-			break;
+			curr->next = newNode;					//Neuer Knoten wird in die Liste von Knoten eingefügt
+			break;									//Abbruch der Schleife wenn der Knoten eingefügt wurde
 		}
-		else
+		else										//Falls msgType nicht übereinstimmt
 		{
-			if (liste->listnext == NULL)
+			if (liste->listnext == NULL)			//Falls der Laufzeiger am Ende der Liste angekommen ist
 			{
-				list* newList = malloc(sizeof(struct list));
-				newList->msgType_l = msgType;
-				newList->firstNode = newNode;
-				newList->listnext = NULL;
-				liste->listnext = newList;
+				list* newList = malloc(sizeof(struct list));	//Speicher für eine neue Liste von Knoten wird reserviert
+				newList->msgType_l = msgType;		//msgType wird als Type der Liste von Knoten definiert
+				newList->firstNode = newNode;		//Neuer Knoten wird als erster Knoten in die Liste eingefügt
+				newList->listnext = NULL;			//Referenz auf den NULL als Marker für das Ende der Liste
+				liste->listnext = newList;			//Neue Liste von Knoten wird in die Liste von Listen eingefügt
+				break;								//Abbruch der Schleife da neues Element hinzugefügt wurde
 			}
-			liste = liste->listnext;
+			liste = liste->listnext;				//Laufzeiger wird auf die nächste Liste Verschoben
 		}
 	}
-
 
 	return 1;
 
@@ -119,28 +123,28 @@ msgReturn_t msg_send(pid_t receiverPid, msgType_t msgType, msgData_t msgData)
 	msgReturn_t receiverResponse = -1;	// Buffer for the return-value provioded by the handler of the receiving process. 
 	msgHandler_t receiverHandler = NULL;	// Function Pointer to the handler of the process receiving the message
 
-	list* liste = root;
+	list* liste = root;									//Erstellen eines Laufzeigers für die Liste von Listen
 
-	while (liste != NULL)
+	while (liste != NULL)								//Solange wir nicht am Ende der Liste angekommen sind 
 	{
-		node* curr = liste->firstNode;
-		if (liste->msgType_l == msgType)
+		
+		if (liste->msgType_l == msgType)				//Wenn der msgType mit dem der Liste Übereinstimmt
 		{
-			while (curr != NULL)
+			node* curr = liste->firstNode;				//Erstellen eines Laufzeigers für die Knoten in einer Liste
+			while (curr != NULL)						//Durchlauf bis ans Ende der Liste
 			{
-				if (curr->pid == receiverPid)
+				if (curr->pid == receiverPid)			//Wenn die übergebene PID mit der aktuellen 
 				{
-					receiverHandler = curr->handler;
-					break;
+					receiverHandler = curr->handler;	//der aktuelle Handler wird an den receiverHandler übergeben
+					break;								//Abbruch der Schleife
 				}
-				curr = curr->next;
+				curr = curr->next;						//Laufzeiger wird auf den nächsten Wert gesetzt
 			}
-			break;
+
+			break;										//Abbruch wenn die Liste abgearbeitert ist
 		}
-		liste = liste->listnext;
+		liste = liste->listnext;						//Laufzeiger wird auf die nächste Liste Verschoben
 	}
-
-
 
 
 	// Ihre Implementierung muss diesen Pointer ermitteln und dafür die 
@@ -155,25 +159,22 @@ msgReturn_t msg_send(pid_t receiverPid, msgType_t msgType, msgData_t msgData)
 /* broadcasting a message to all processes */
 void msg_broadcast(msgType_t msgType, msgData_t msgData)
 {
-	list* liste = root;
-	list* pre = root;
-	while (liste != NULL)
+	list* liste = root;									//Erstellen eines Laufzeigers für die Liste von Listen
+	while (liste != NULL)								//Solange wir nicht am Ende der Liste angekommen sind
 	{
-		node* curr = liste->firstNode;
-		if (liste->msgType_l == msgType)
+		node* curr = liste->firstNode;					//Erstellen eines Laufzeigers für die Knoten in einer Liste
+		if (liste->msgType_l == msgType)				//Es wird geprüft ob der übergebe msgType mit dem aktuellen übereinstimmt
 		{
-			while (curr != NULL)
+			while (curr != NULL)						//Durchlauf bis ans Ende der Liste
 			{
-				msg_send(curr->pid, msgType, msgData);
-				curr = curr->next;
+				msg_send(curr->pid, msgType, msgData);	//msg_send wird aufgerufen und die Werte für die Aktuelle pid, msgType und msgData werden übergeben
+				curr = curr->next;						//Laufzeiger wird auf den nächsten Wert gesetzt
 			}
-			pre->listnext = liste->listnext;
-			free(liste);
-			break;
+			break;										//Abbruch wenn die Liste abgearbeitet ist
 		}
-		pre = liste;
-		liste = liste->listnext;
+		liste = liste->listnext;						//Laufzeiger wird auf die nächste Liste gesetzt
 	}
+
 }
 
 
