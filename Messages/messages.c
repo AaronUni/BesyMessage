@@ -140,11 +140,15 @@ msgReturn_t msg_send(pid_t receiverPid, msgType_t msgType, msgData_t msgData)
 				}
 				curr = curr->next;						//Laufzeiger wird auf den nächsten Wert gesetzt
 			}
-
+			
 			break;										//Abbruch wenn die Liste abgearbeitert ist
 		}
 		liste = liste->listnext;						//Laufzeiger wird auf die nächste Liste Verschoben
 	}
+	if (receiverHandler == NULL)						//Falls die gesuchte PID nicht vorhanden ist
+		{
+			return 1;									//Abbruch des Sendevorgangs
+		}
 
 
 	// Ihre Implementierung muss diesen Pointer ermitteln und dafür die 
